@@ -48,7 +48,7 @@ public class JWTEncryption {
 	
 	public static void main(String[] args) throws Exception {
 		 
-		/**Sender assembles claims payload and encrypt**/
+		/**SENDER assembles claims payload and encrypt**/
 		  
 		JwtClaims claims = new JwtClaims();
 		claims.setIssuer("Issuer");	// who creates the token and signs it
@@ -88,7 +88,7 @@ public class JWTEncryption {
 		JsonWebEncryption jwe = new JsonWebEncryption();
 		//jwe.setKey(receipentPubKey);
 		jwe.setKey(PublicKeyFromKeyFile);
-		jwe.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP_256);
+		jwe.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP);
 		jwe.setContentEncryptionKey(contentEncryptKey.getEncoded());
 		jwe.setEncryptionMethodHeaderParameter(ContentEncryptionAlgorithmIdentifiers.AES_256_GCM);
 		//Setting Initial Vector = Optional as adding more randomness to the key
@@ -99,19 +99,10 @@ public class JWTEncryption {
 		//Compact Serialization
 		String encryptedJwt = jwe.getCompactSerialization();
 		System.out.println("Encrypted ::" + encryptedJwt);
-		
-		       
-		// Encode data on your side using BASE64
-		byte[] encodedBytes = Base64.getEncoder().encode(encryptedJwt.getBytes());
-		System.out.println("encodedBytes " + new String(encodedBytes));
 		    
 		 
-	    /***************************RECEIVER'S END ***********************************/
-		 
-		// Decode data on other side, by processing encoded data
-		byte[] decodedBytes = Base64.getDecoder().decode(encodedBytes);
-		System.out.println("decodedBytes " + new String(decodedBytes));
-		 
+	    /**RECEIVER decrypts the CEK and decrypts Ciphertext with CEK to produce claims**/
+				 
 	    //Decrypt Ciphertext with JWE encrypted key
 		JwtConsumer consumer = new JwtConsumerBuilder()
 		                        .setExpectedAudience("RealInfo")
