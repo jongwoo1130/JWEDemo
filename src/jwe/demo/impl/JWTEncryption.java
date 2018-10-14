@@ -17,13 +17,9 @@ import javax.crypto.SecretKey;
 import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
-import org.jose4j.jwk.RsaJsonWebKey;
-import org.jose4j.jwk.RsaJwkGenerator;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.consumer.JwtConsumer;
 import org.jose4j.jwt.consumer.JwtConsumerBuilder;
-
-import java.util.Base64;
 
 public class JWTEncryption {
 	private static String privateKeyPath = "keys/private_key.der";
@@ -48,7 +44,7 @@ public class JWTEncryption {
 	
 	public static void main(String[] args) throws Exception {
 		 
-		/**SENDER assembles claims payload and encrypt**/
+		/******************** SENDER sample code **********************/
 		  
 		JwtClaims claims = new JwtClaims();
 		claims.setIssuer("Issuer");	// who creates the token and signs it
@@ -60,25 +56,16 @@ public class JWTEncryption {
 		claims.setSubject("demo");
 		
 		claims.setClaim("email", "test@altusgroup.com");
-		List<String> data = Arrays.asList("test", "test2", "test3");
+		List<String> data = Arrays.asList("data1", "data2", "data3");
 		claims.setStringListClaim("data", data);
 		System.out.println("Senders side :: " + claims.toJson());
 		 
-		//ENCRYPTING
+		//ENCRYPTION
 		 
 		//RSA_OAEP_256
-		//Sender will get this public key from the receiver
-		RsaJsonWebKey ceKey = RsaJwkGenerator.generateJwk(2048);
-		PublicKey receipentPubKey = ceKey.getPublicKey();
-		
 		PublicKey PublicKeyFromKeyFile = getPublicKey(publicKeyPath);
 		PrivateKey PrivateKeyFromKeyFile = getPrivateKey(privateKeyPath);
 		
-		
-		//public key
-		System.out.println("RSA public key: " +receipentPubKey.toString());
-		System.out.println("RSA public key from file: " +PublicKeyFromKeyFile.toString());
-		 
 		//Generation of content encryption key
 		KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 		keyGen.init(256);
@@ -86,35 +73,41 @@ public class JWTEncryption {
 		
 		//Set JOSE header, JWE Encrypted Key, Initialization Vector, Ciphertext, Authentication Tag
 		JsonWebEncryption jwe = new JsonWebEncryption();
-		//jwe.setKey(receipentPubKey);
-		jwe.setKey(PublicKeyFromKeyFile);
-		jwe.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP);
-		jwe.setContentEncryptionKey(contentEncryptKey.getEncoded());
-		jwe.setEncryptionMethodHeaderParameter(ContentEncryptionAlgorithmIdentifiers.AES_256_GCM);
-		//Setting Initial Vector = Optional as adding more randomness to the key
-		/*SecureRandom iv = SecureRandom.getInstance("SHA1PRNG");
-		jwe.setIv(iv.generateSeed(32));*/
-		jwe.setPayload(claims.toJson());
 		
+		//Set alg and enc in Header
+		jwe.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.RSA_OAEP);
+		jwe.setEncryptionMethodHeaderParameter(ContentEncryptionAlgorithmIdentifiers.AES_256_GCM);
+		
+		jwe.setKey(PublicKeyFromKeyFile);
+		jwe.setContentEncryptionKey(contentEncryptKey.getEncoded());
+		
+		//Set iv... Optional as adding more randomness to the key
+		SecureRandom iv = SecureRandom.getInstance("SHA1PRNG");
+		jwe.setIv(iv.generateSeed(32));
+		
+		//Set claims
+		jwe.setPayload(claims.toJson());
+
 		//Compact Serialization
 		String encryptedJwt = jwe.getCompactSerialization();
 		System.out.println("Encrypted ::" + encryptedJwt);
 		    
-		 
-	    /**RECEIVER decrypts the CEK and decrypts Ciphertext with CEK to produce claims**/
+		/******************** RECEIVER sample code **********************/ 
+	    /**
+	     * RECEIVER decrypts the CEK 
+	     * and decrypts Ciphertext with CEK to produce claims
+	     * **/
 				 
 	    //Decrypt Ciphertext with JWE encrypted key
 		JwtConsumer consumer = new JwtConsumerBuilder()
 		                        .setExpectedAudience("RealInfo")
 		                        .setExpectedIssuer("Issuer")
 		                        .setRequireSubject()
-		                        //.setDecryptionKey(ceKey.getPrivateKey())
 		                        .setDecryptionKey(PrivateKeyFromKeyFile)
 		                        .setDisableRequireSignature()
 		                        .build();		
 	
 		JwtClaims receivedClaims = consumer.processToClaims(encryptedJwt);
-		System.out.println("SUCESS :: JWT Validation :: " + receivedClaims);
-         
+		System.out.println("SUCESS :: JWT Validation :: " + receivedClaims);         
     }	
 }
